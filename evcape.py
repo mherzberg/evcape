@@ -26,6 +26,7 @@ ACTION_TO_KEY_EVENT_VALUE = {
     value: key
     for key, value in KEY_EVENT_VALUE_TO_ACTION.items()
 }
+MODIFIERS = [evdev.ecodes.KEY_LEFTSHIFT]
 
 
 def main():
@@ -66,9 +67,16 @@ def main():
 
     # put keypresses into a buffer and try to match rules
     previous_event_timestamp = 0.0
+    pressed_modifiers = set()
     with uinput, keyboard_monitor:
         for event in keyboard_monitor:
             lookup_key = (event.value, event.code)
+            if event.code in MODIFIERS:
+                if event.value == 1:
+                    pressed_modifiers.add(event.code)
+                else:
+                    pressed_modifiers.remove(event.code)
+                continue
             buffer.append(lookup_key)
             ts_diff = event.timestamp() - previous_event_timestamp
             previous_event_timestamp = event.timestamp()
@@ -81,11 +89,21 @@ def main():
                 buffer_slice = list(buffer)[-len(rule.patterns):]
                 if rule.patterns != buffer_slice:
                     continue
+                for mod in pressed_modifiers:
+                    uinput.write(
+                        evdev.ecodes.EV_KEY,
+                        mod,
+                        1)
                 for value, code in rule.actions:
                     uinput.write(
                         evdev.ecodes.EV_KEY,
                         code,
                         value)
+                for mod in pressed_modifiers:
+                    uinput.write(
+                        evdev.ecodes.EV_KEY,
+                        mod,
+                        0)
                 uinput.syn()
 
 
