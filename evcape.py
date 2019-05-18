@@ -220,6 +220,8 @@ def read_input_device_events(input_device):
 
 
 def udev_keyboard_device_name(device):
+    if device.properties.get('ID_INPUT_JOYSTICK') == '1':
+        return None
     if device.properties.get('ID_INPUT_KEYBOARD') != '1':
         return None  # This is not a keyboard.
     try:
